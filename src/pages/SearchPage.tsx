@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { searchSongs } from '@/services/searchService';
 import { formatDuration, isYouTubeApiExhausted } from '@/services/youtubeApi';
 import { getSearchSuggestions } from '@/services/searchSuggestionsApi';
+import { getCachedSearch, setCachedSearch, cleanupExpiredCache } from '@/services/searchCacheService';
 import { collection, addDoc, getDocs, query as firestoreQuery, orderBy, limit, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
@@ -58,6 +59,12 @@ export default function SearchPage() {
     };
     checkApi();
     const interval = setInterval(checkApi, 30000);
+    
+    // Cleanup expired cache entries on mount
+    if (currentUser) {
+      cleanupExpiredCache(currentUser.uid).catch(() => {});
+    }
+    
     return () => clearInterval(interval);
   }, [currentUser]);
 
@@ -166,6 +173,21 @@ export default function SearchPage() {
     inputRef.current?.blur();
 
     try {
+      // Check Firebase cache first
+      if (currentUser) {
+        const cached = await getCachedSearch(currentUser.uid, searchQuery, searchMode);
+        if (cached && cached.songs.length > 0) {
+          if (searchId !== activeSearchId.current) return;
+          console.log('[Search] Using cached results for:', searchQuery);
+          setResults(cached.songs.slice(0, 10));
+          setSlowSearch(false);
+          setSearchError(null);
+          setLoading(false);
+          saveSearch(searchQuery);
+          return;
+        }
+      }
+
       const result = await searchSongs(searchQuery, searchMode);
 
       // Ignore outdated responses
@@ -176,7 +198,15 @@ export default function SearchPage() {
       setSlowSearch(result.source === 'ytdlp' && result.slow);
       setSearchError(result.error || (songs.length === 0 ? 'No results found.' : null));
 
-      if (!result.error) {
+      if (!result.error && songs.length > 0 && currentUser) {
+        // Save to Firebase cache
+        await setCachedSearch(
+          currentUser.uid,
+          searchQuery,
+          searchMode,
+          songs,
+          result.source || 'youtube'
+        );
         saveSearch(searchQuery);
       }
     } catch (error) {

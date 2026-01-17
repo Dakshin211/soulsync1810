@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, Shuffle, Repeat, Plus, Trash2, Music2, MoreVertical, Share2, Clock, Pencil, Check, X } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Shuffle, Repeat, Plus, Trash2, Music2, MoreVertical, Share2, Clock, Pencil, Check, X, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, arrayRemove, onSnapshot, arrayUnion, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayRemove, onSnapshot, arrayUnion, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { formatDuration } from '@/services/youtubeApi';
+import { sharePlaylist } from '@/services/sharedPlaylistService';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,13 +33,15 @@ interface Playlist {
   songs: Song[];
   createdAt: string;
   shuffleMode?: boolean;
+  isShared?: boolean;
+  shareCode?: string;
 }
 
 export default function PlaylistDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const { playSong, setQueue, currentSong, isPlaying, pauseSong, resumeSong, repeat, toggleRepeat, shuffle, toggleShuffle } = useMusicPlayer();
+  const { playSong, setQueue, currentSong, isPlaying, pauseSong, resumeSong, repeat, toggleRepeat } = useMusicPlayer();
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPlaylistPlaying, setIsPlaylistPlaying] = useState(false);
@@ -47,6 +50,8 @@ export default function PlaylistDetail() {
   
   // Local shuffle state for this playlist (default: random/shuffle)
   const [playlistShuffle, setPlaylistShuffle] = useState(true);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id || !currentUser) return;
@@ -178,12 +183,34 @@ export default function PlaylistDetail() {
     }
   };
 
-  const sharePlaylist = async () => {
-    if (!playlist) return;
+  const handleSharePlaylist = async () => {
+    if (!playlist || !currentUser) return;
     
+    setIsSharing(true);
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/playlist/${playlist.id}`);
-      toast.success('Playlist link copied!');
+      const result = await sharePlaylist(
+        playlist.id,
+        playlist.name,
+        playlist.songs,
+        currentUser.uid
+      );
+      
+      setShareUrl(result.shareUrl);
+      await navigator.clipboard.writeText(result.shareUrl);
+      toast.success('Share link copied to clipboard!');
+    } catch (error) {
+      console.error('Error sharing playlist:', error);
+      toast.error('Failed to share playlist');
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const copyShareLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Link copied!');
     } catch {
       toast.error('Failed to copy link');
     }
@@ -412,11 +439,22 @@ export default function PlaylistDetail() {
             <Button
               variant="outline"
               size="icon"
-              onClick={sharePlaylist}
-              className="w-14 h-14 rounded-full border-2 border-border hover:border-primary hover:text-primary transition-all hover:scale-105"
-              title="Share playlist"
+              onClick={handleSharePlaylist}
+              disabled={isSharing}
+              className={`w-14 h-14 rounded-full border-2 transition-all hover:scale-105 ${
+                playlist.isShared || shareUrl
+                  ? 'border-primary bg-primary/20 text-primary shadow-glow-pink'
+                  : 'border-border hover:border-primary hover:text-primary'
+              }`}
+              title={playlist.isShared ? 'Copy share link' : 'Share playlist'}
             >
-              <Share2 className="w-6 h-6" />
+              {isSharing ? (
+                <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : playlist.isShared || shareUrl ? (
+                <Link2 className="w-6 h-6" />
+              ) : (
+                <Share2 className="w-6 h-6" />
+              )}
             </Button>
 
             <Button

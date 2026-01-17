@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -43,9 +43,37 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const AppContent = () => {
   const [showSplash, setShowSplash] = useState(true);
+  const [splashReady, setSplashReady] = useState(false);
 
-  if (showSplash) {
+  // Ensure splash screen doesn't cause black screen by adding a safety timeout
+  useEffect(() => {
+    // Force hide splash after 4 seconds maximum (safety net)
+    const safetyTimer = setTimeout(() => {
+      setShowSplash(false);
+    }, 4000);
+
+    // Normal splash duration
+    const timer = setTimeout(() => {
+      setSplashReady(true);
+    }, 100);
+
+    return () => {
+      clearTimeout(safetyTimer);
+      clearTimeout(timer);
+    };
+  }, []);
+
+  if (showSplash && splashReady) {
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
+  }
+
+  // Show a minimal loading state if splash isn't ready yet
+  if (showSplash && !splashReady) {
+    return (
+      <div className="fixed inset-0 bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   return (
