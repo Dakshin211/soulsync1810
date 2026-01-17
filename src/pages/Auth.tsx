@@ -32,6 +32,7 @@ export default function Auth() {
   // Redirect if already logged in
   useEffect(() => {
     if (currentUser) {
+      localStorage.setItem(AUTH_MODE_KEY, 'login');
       navigate('/');
     }
   }, [currentUser, navigate]);
@@ -54,6 +55,7 @@ export default function Auth() {
       if (isLogin) {
         await login(email, password);
         toast.success('Welcome back!');
+        localStorage.setItem(AUTH_MODE_KEY, 'login');
       } else {
         if (!username.trim()) {
           toast.error('Please enter a username');
@@ -62,6 +64,7 @@ export default function Auth() {
         }
         await signup(email, password, username);
         toast.success('Account created!');
+        localStorage.setItem(AUTH_MODE_KEY, 'login'); // After signup → show login next time
       }
 
       navigate('/');
@@ -71,17 +74,17 @@ export default function Auth() {
       let message = 'Authentication failed';
 
       if (isLogin) {
-        if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
-          message = 'No account found with this email. Please sign up first.';
-        } else if (code === 'auth/wrong-password') {
-          message = 'Incorrect password. Please try again.';
+        if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
+          message = 'Incorrect email or password.';
+        } else if (code === 'auth/user-not-found') {
+          message = 'No account found with this email.';
         } else if (code === 'auth/too-many-requests') {
           message = 'Too many attempts. Please try again later.';
         }
       } else {
         if (code === 'auth/email-already-in-use') {
-          message = 'This email is already registered. Please sign in instead.';
-          switchToLogin(); // UX improvement
+          message = 'This email is already registered. Please sign in.';
+          switchToLogin();
         } else if (code === 'auth/weak-password') {
           message = 'Password should be at least 6 characters.';
         } else if (code === 'auth/invalid-email') {
@@ -108,7 +111,6 @@ export default function Auth() {
       setLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
