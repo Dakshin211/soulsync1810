@@ -8,14 +8,14 @@ import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 
-const FIRST_VISIT_KEY = 'soulsync_has_visited';
+const AUTH_MODE_KEY = 'soulsync_auth_mode';
 
 export default function Auth() {
 
-  // FIRST VISIT → SIGN UP (isLogin = false)
+  // DEFAULT → SIGN UP
   const [isLogin, setIsLogin] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(FIRST_VISIT_KEY) === 'visited';
+      return localStorage.getItem(AUTH_MODE_KEY) === 'login';
     } catch {
       return false;
     }
@@ -36,10 +36,14 @@ export default function Auth() {
     }
   }, [currentUser, navigate]);
 
-  const markVisited = () => {
-    try {
-      localStorage.setItem(FIRST_VISIT_KEY, 'visited');
-    } catch {}
+  const switchToLogin = () => {
+    setIsLogin(true);
+    localStorage.setItem(AUTH_MODE_KEY, 'login');
+  };
+
+  const switchToSignup = () => {
+    setIsLogin(false);
+    localStorage.setItem(AUTH_MODE_KEY, 'signup');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,7 +64,6 @@ export default function Auth() {
         toast.success('Account created!');
       }
 
-      markVisited();
       navigate('/');
 
     } catch (error: any) {
@@ -78,6 +81,7 @@ export default function Auth() {
       } else {
         if (code === 'auth/email-already-in-use') {
           message = 'This email is already registered. Please sign in instead.';
+          switchToLogin(); // UX improvement
         } else if (code === 'auth/weak-password') {
           message = 'Password should be at least 6 characters.';
         } else if (code === 'auth/invalid-email') {
@@ -95,7 +99,7 @@ export default function Auth() {
     setLoading(true);
     try {
       await loginWithGoogle();
-      markVisited();
+      localStorage.setItem(AUTH_MODE_KEY, 'login');
       toast.success('Welcome!');
       navigate('/');
     } catch (error: any) {
