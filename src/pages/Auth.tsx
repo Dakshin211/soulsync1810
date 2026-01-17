@@ -11,34 +11,36 @@ import logo from '@/assets/logo.png';
 const FIRST_VISIT_KEY = 'soulsync_has_visited';
 
 export default function Auth() {
-  // Check if this is the first visit - if so, show Sign Up by default
-  const [isLogin, setIsLogin] = useState(() => {
+
+  // FIRST VISIT → SIGN UP (isLogin = false)
+  const [isLogin, setIsLogin] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(FIRST_VISIT_KEY) === 'true';
+      return localStorage.getItem(FIRST_VISIT_KEY) === 'visited';
     } catch {
-      return false; // First visit = false = show Sign Up
+      return false;
     }
   });
 
-  // Mark that user has visited once they toggle or submit
-  useEffect(() => {
-    try {
-      localStorage.setItem(FIRST_VISIT_KEY, 'true');
-    } catch {}
-  }, []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
+
   const { login, signup, loginWithGoogle, currentUser } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already logged in
-  React.useEffect(() => {
+  useEffect(() => {
     if (currentUser) {
       navigate('/');
     }
   }, [currentUser, navigate]);
+
+  const markVisited = () => {
+    try {
+      localStorage.setItem(FIRST_VISIT_KEY, 'visited');
+    } catch {}
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,12 +59,14 @@ export default function Auth() {
         await signup(email, password, username);
         toast.success('Account created!');
       }
+
+      markVisited();
       navigate('/');
+
     } catch (error: any) {
-      // Enhanced error messages
       const code = error?.code || '';
-      let message = error.message || 'Authentication failed';
-      
+      let message = 'Authentication failed';
+
       if (isLogin) {
         if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
           message = 'No account found with this email. Please sign up first.';
@@ -80,7 +84,7 @@ export default function Auth() {
           message = 'Please enter a valid email address.';
         }
       }
-      
+
       toast.error(message);
     } finally {
       setLoading(false);
@@ -91,6 +95,7 @@ export default function Auth() {
     setLoading(true);
     try {
       await loginWithGoogle();
+      markVisited();
       toast.success('Welcome!');
       navigate('/');
     } catch (error: any) {
@@ -99,6 +104,7 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
