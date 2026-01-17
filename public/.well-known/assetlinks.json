@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.soulsync119.twa",
+      "sha256_cert_fingerprints": [
+        "F9:EC:14:BF:44:0B:10:B0:F8:63:38:BE:53:25:B7:B9:13:BC:70:01:E4:A7:13:9D:30:AF:01:99:F1:2D:35:D4"
+      ]
+    }
+  }
+]

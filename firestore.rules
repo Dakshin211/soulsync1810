@@ -1,0 +1,101 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============= ROLLBACK: Revert if permission issues occur =============
+    
+    // Users collection - users can read/write their own data and subcollections
+    match /Users/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow users to manage their own recent searches subcollection
+      match /recentSearches/{searchId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // DailyMusicData collection - public read/write for daily cached data
+    match /DailyMusicData/{document=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // StaticMusicData collection - public read/write for static cached data
+    match /StaticMusicData/{document=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // Recommendations collection - public read/write (contains user recommendations)
+    match /recommendations/{userId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // ArtistDetails collection - public read/write for artist info caching
+    match /ArtistDetails/{artistName} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // ArtistSongs collection - shared cache for all users (0 API if cached)
+    match /ArtistSongs/{artistId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // RecentSearches collection - user specific
+    match /RecentSearches/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Admin collection - public write for caching metadata
+    match /Admin/{document=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // Config collection - public read
+    match /config/{document=**} {
+      allow read: if true;
+      allow write: if false; // Only via Firebase Console
+    }
+    
+    // Friends collection - users can read/write their own friendships
+    match /Friends/{friendshipId} {
+      allow read: if request.auth != null &&
+        (resource.data.userId == request.auth.uid || resource.data.friendId == request.auth.uid);
+
+      // Create/update must be done by one of the two users in the friendship
+      allow create: if request.auth != null &&
+        (request.resource.data.userId == request.auth.uid || request.resource.data.friendId == request.auth.uid);
+
+      // Updates are allowed by either user, but the relationship keys can't be changed
+      allow update: if request.auth != null &&
+        (resource.data.userId == request.auth.uid || resource.data.friendId == request.auth.uid) &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.friendId == resource.data.friendId;
+
+      // Deletes must check the *existing* document (request.resource is empty on delete)
+      allow delete: if request.auth != null &&
+        (resource.data.userId == request.auth.uid || resource.data.friendId == request.auth.uid);
+    }
+    
+    // Playlists collection - users can read/write their own playlists
+    match /Playlists/{playlistId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    // SimilarTracks collection - public cache for similar songs
+    match /SimilarTracks/{trackId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}
