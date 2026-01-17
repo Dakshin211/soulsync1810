@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,24 @@ import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 
+const FIRST_VISIT_KEY = 'soulsync_has_visited';
+
 export default function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
+  // Check if this is the first visit - if so, show Sign Up by default
+  const [isLogin, setIsLogin] = useState(() => {
+    try {
+      return localStorage.getItem(FIRST_VISIT_KEY) === 'true';
+    } catch {
+      return false; // First visit = false = show Sign Up
+    }
+  });
+
+  // Mark that user has visited once they toggle or submit
+  useEffect(() => {
+    try {
+      localStorage.setItem(FIRST_VISIT_KEY, 'true');
+    } catch {}
+  }, []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -33,12 +49,39 @@ export default function Auth() {
         await login(email, password);
         toast.success('Welcome back!');
       } else {
+        if (!username.trim()) {
+          toast.error('Please enter a username');
+          setLoading(false);
+          return;
+        }
         await signup(email, password, username);
         toast.success('Account created!');
       }
       navigate('/');
     } catch (error: any) {
-      toast.error(error.message || 'Authentication failed');
+      // Enhanced error messages
+      const code = error?.code || '';
+      let message = error.message || 'Authentication failed';
+      
+      if (isLogin) {
+        if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
+          message = 'No account found with this email. Please sign up first.';
+        } else if (code === 'auth/wrong-password') {
+          message = 'Incorrect password. Please try again.';
+        } else if (code === 'auth/too-many-requests') {
+          message = 'Too many attempts. Please try again later.';
+        }
+      } else {
+        if (code === 'auth/email-already-in-use') {
+          message = 'This email is already registered. Please sign in instead.';
+        } else if (code === 'auth/weak-password') {
+          message = 'Password should be at least 6 characters.';
+        } else if (code === 'auth/invalid-email') {
+          message = 'Please enter a valid email address.';
+        }
+      }
+      
+      toast.error(message);
     } finally {
       setLoading(false);
     }
