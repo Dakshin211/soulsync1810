@@ -357,29 +357,29 @@ export default function CreatePlaylistModal({ open, onOpenChange }: CreatePlayli
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="bg-card/95 backdrop-blur-xl border-border w-[calc(100vw-2rem)] max-w-md max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader className="shrink-0">
-          <DialogTitle className="text-xl flex items-center gap-2">
+      <DialogContent className="bg-card/95 backdrop-blur-xl border-border w-[calc(100vw-2rem)] max-w-[400px] max-h-[85vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="shrink-0 px-5 pt-5 pb-3">
+          <DialogTitle className="text-lg flex items-center gap-2">
             <Music2 className="w-5 h-5 text-primary animate-pulse" />
             {showSpotifyImport ? 'Import from Spotify' : 'Create Playlist'}
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
+        <ScrollArea className="flex-1 px-5 pb-5">
           {!showSpotifyImport ? (
             // Create playlist view
-            <div className="space-y-4 mt-2 pb-4">
+            <div className="space-y-4">
               <Input
                 placeholder="Playlist name"
                 value={newPlaylistName}
                 onChange={(e) => setNewPlaylistName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && createPlaylist()}
-                className="bg-input border-border transition-all focus:ring-2 focus:ring-primary/50"
+                className="bg-input border-border transition-all focus:ring-2 focus:ring-primary/50 h-11"
               />
               <Button 
                 onClick={createPlaylist}
                 disabled={isCreating || !newPlaylistName.trim()}
-                className="w-full btn-gradient-primary transition-all hover:scale-[1.02]"
+                className="w-full btn-gradient-primary transition-all hover:scale-[1.02] h-11"
               >
                 {isCreating ? (
                   <>
@@ -391,7 +391,7 @@ export default function CreatePlaylistModal({ open, onOpenChange }: CreatePlayli
                 )}
               </Button>
               
-              <div className="relative py-3">
+              <div className="relative py-2">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-border/50" />
                 </div>
@@ -402,7 +402,7 @@ export default function CreatePlaylistModal({ open, onOpenChange }: CreatePlayli
               
               <button
                 onClick={() => setShowSpotifyImport(true)}
-                className="w-full flex items-center justify-center gap-2 py-4 text-sm font-medium transition-all group relative overflow-hidden rounded-xl border border-[#1DB954]/50 hover:border-[#1DB954] hover:shadow-[0_0_30px_rgba(29,185,84,0.5)] hover:scale-[1.02]"
+                className="w-full flex items-center justify-center gap-2 py-3.5 text-sm font-medium transition-all group relative overflow-hidden rounded-xl border border-[#1DB954]/50 hover:border-[#1DB954] hover:shadow-[0_0_30px_rgba(29,185,84,0.5)] hover:scale-[1.02]"
               >
                 {/* Animated Spotify green glow background */}
                 <div className="absolute inset-0 bg-gradient-to-r from-[#1DB954]/20 via-[#1DB954]/10 to-[#1DB954]/20 opacity-50 group-hover:opacity-80 transition-opacity" />

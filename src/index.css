@@ -211,4 +211,57 @@ All colors MUST be HSL.
   .drop-shadow-glow-violet {
     filter: drop-shadow(0 0 10px hsl(270 91% 65% / 0.5));
   }
+
+  /* Floating animation to bottom (for queue addition) */
+  .animate-float-to-bottom {
+    animation: floatToBottom 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  @keyframes floatToBottom {
+    0% {
+      transform: translateX(-50%) translateY(0) scale(1);
+      opacity: 1;
+    }
+    30% {
+      transform: translateX(-50%) translateY(-30px) scale(1.05);
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(-50%) translateY(200px) scale(0.8);
+      opacity: 0;
+    }
+  }
+
+  /* Fade in up animation */
+  .animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+    opacity: 0;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+
+  /* Trail particles animation */
+  .animate-trail {
+    animation: trail 0.5s ease-out forwards;
+  }
+
+  @keyframes trail {
+    0% {
+      opacity: 0.6;
+      transform: translateY(0);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-30px);
+    }
+  }
 }

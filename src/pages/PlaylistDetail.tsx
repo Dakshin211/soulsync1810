@@ -1,16 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, Shuffle, Repeat, Plus, Trash2, Music2, MoreVertical, Share2, Clock, Pencil, Check, X, Link2 } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Shuffle, Repeat, Plus, Trash2, Music2, MoreVertical, Share2, Clock, Pencil, Check, X, Link2, Lock, Globe, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, arrayRemove, onSnapshot, arrayUnion, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { formatDuration } from '@/services/youtubeApi';
-import { sharePlaylist } from '@/services/sharedPlaylistService';
+import { sharePlaylist, unsharePlaylist } from '@/services/sharedPlaylistService';
+import DeletePlaylistDialog from '@/components/DeletePlaylistDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +38,9 @@ interface Playlist {
   shuffleMode?: boolean;
   isShared?: boolean;
   shareCode?: string;
+  isPublic?: boolean;
+  isSharedCopy?: boolean;
+  savedFromShareCode?: string;
 }
 
 export default function PlaylistDetail() {
@@ -52,6 +58,7 @@ export default function PlaylistDetail() {
   const [playlistShuffle, setPlaylistShuffle] = useState(true);
   const [isSharing, setIsSharing] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
     if (!id || !currentUser) return;
@@ -183,8 +190,50 @@ export default function PlaylistDetail() {
     }
   };
 
+  // Toggle public/private
+  const togglePublic = async () => {
+    if (!playlist) return;
+    
+    const newIsPublic = !playlist.isPublic;
+    
+    try {
+      await updateDoc(doc(db, 'Playlists', playlist.id), {
+        isPublic: newIsPublic
+      });
+      
+      // If making private, also unshare
+      if (!newIsPublic && playlist.shareCode) {
+        await unsharePlaylist(playlist.id, playlist.shareCode);
+        setShareUrl(null);
+      }
+      
+      toast.success(newIsPublic ? 'Playlist is now public' : 'Playlist is now private');
+    } catch (error) {
+      console.error('Error toggling visibility:', error);
+      toast.error('Failed to update visibility');
+    }
+  };
+
   const handleSharePlaylist = async () => {
     if (!playlist || !currentUser) return;
+    
+    // Check if playlist is public
+    if (!playlist.isPublic) {
+      toast.error('Make playlist public first to share');
+      return;
+    }
+    
+    // If already shared, just copy the link
+    if (playlist.shareCode) {
+      const url = `${window.location.origin}/shared/${playlist.shareCode}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success('Share link copied!');
+      } catch {
+        toast.error('Failed to copy link');
+      }
+      return;
+    }
     
     setIsSharing(true);
     try {
@@ -207,9 +256,10 @@ export default function PlaylistDetail() {
   };
 
   const copyShareLink = async () => {
-    if (!shareUrl) return;
+    const url = shareUrl || (playlist?.shareCode ? `${window.location.origin}/shared/${playlist.shareCode}` : null);
+    if (!url) return;
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(url);
       toast.success('Link copied!');
     } catch {
       toast.error('Failed to copy link');
@@ -243,10 +293,18 @@ export default function PlaylistDetail() {
     }
   };
 
-  const deletePlaylist = async () => {
+  const handleDeleteClick = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
     if (!playlist) return;
     
     try {
+      // If shared, unshare first
+      if (playlist.shareCode) {
+        await unsharePlaylist(playlist.id, playlist.shareCode);
+      }
       await deleteDoc(doc(db, 'Playlists', playlist.id));
       toast.success('Playlist deleted');
       navigate('/playlists');
@@ -380,8 +438,46 @@ export default function PlaylistDetail() {
             </div>
           </div>
 
+          {/* Public/Private Toggle + Shared Badge */}
+          <div className="flex items-center gap-4 mt-4 flex-wrap justify-center md:justify-start">
+            {/* Shared playlist indicator */}
+            {playlist.isSharedCopy && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/20 rounded-full border border-primary/30">
+                <Globe className="w-4 h-4 text-primary" />
+                <span className="text-sm text-primary font-medium">Saved from shared</span>
+              </div>
+            )}
+            
+            {/* Public/Private toggle */}
+            <div className="flex items-center gap-3 px-4 py-2 bg-card/50 backdrop-blur rounded-full border border-border">
+              <Lock className={`w-4 h-4 transition-colors ${!playlist.isPublic ? 'text-foreground' : 'text-muted-foreground'}`} />
+              <Switch
+                checked={playlist.isPublic ?? false}
+                onCheckedChange={togglePublic}
+                className="data-[state=checked]:bg-primary"
+              />
+              <Globe className={`w-4 h-4 transition-colors ${playlist.isPublic ? 'text-primary' : 'text-muted-foreground'}`} />
+              <span className="text-sm">
+                {playlist.isPublic ? 'Public' : 'Private'}
+              </span>
+            </div>
+
+            {/* Copy link button (only if public & shared) */}
+            {playlist.isPublic && playlist.shareCode && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={copyShareLink}
+                className="gap-2 rounded-full border-primary/50 text-primary hover:bg-primary/10"
+              >
+                <Copy className="w-4 h-4" />
+                Copy Link
+              </Button>
+            )}
+          </div>
+
           {/* Action buttons */}
-          <div className="flex items-center gap-4 mt-8 justify-center md:justify-start flex-wrap">
+          <div className="flex items-center gap-4 mt-6 justify-center md:justify-start flex-wrap">
             <Button
               onClick={togglePlayPause}
               disabled={!playlist.songs.length}
@@ -436,21 +532,26 @@ export default function PlaylistDetail() {
               <Plus className="w-6 h-6" />
             </Button>
 
+            {/* Share button - only enabled if public */}
             <Button
               variant="outline"
               size="icon"
               onClick={handleSharePlaylist}
-              disabled={isSharing}
+              disabled={isSharing || !playlist.isPublic}
               className={`w-14 h-14 rounded-full border-2 transition-all hover:scale-105 ${
-                playlist.isShared || shareUrl
-                  ? 'border-primary bg-primary/20 text-primary shadow-glow-pink'
-                  : 'border-border hover:border-primary hover:text-primary'
+                !playlist.isPublic 
+                  ? 'border-border opacity-50 cursor-not-allowed'
+                  : playlist.shareCode || shareUrl
+                    ? 'border-primary bg-primary/20 text-primary shadow-glow-pink'
+                    : 'border-border hover:border-primary hover:text-primary'
               }`}
-              title={playlist.isShared ? 'Copy share link' : 'Share playlist'}
+              title={!playlist.isPublic ? 'Make public to share' : playlist.shareCode ? 'Copy share link' : 'Share playlist'}
             >
               {isSharing ? (
                 <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : playlist.isShared || shareUrl ? (
+              ) : !playlist.isPublic ? (
+                <Lock className="w-6 h-6" />
+              ) : playlist.shareCode || shareUrl ? (
                 <Link2 className="w-6 h-6" />
               ) : (
                 <Share2 className="w-6 h-6" />
@@ -460,7 +561,7 @@ export default function PlaylistDetail() {
             <Button
               variant="outline"
               size="icon"
-              onClick={deletePlaylist}
+              onClick={handleDeleteClick}
               className="w-14 h-14 rounded-full border-2 border-destructive/50 bg-destructive/10 hover:bg-destructive hover:border-destructive text-destructive hover:text-destructive-foreground transition-all hover:scale-105"
               title="Delete playlist"
             >
@@ -577,6 +678,14 @@ export default function PlaylistDetail() {
           </div>
         )}
       </div>
+
+      {/* Delete confirmation dialog */}
+      <DeletePlaylistDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        playlistName={playlist.name}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

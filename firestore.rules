@@ -90,6 +90,13 @@ service cloud.firestore {
       allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow create: if request.auth != null;
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    // SharedPlaylists collection - public read, owner write
+    match /SharedPlaylists/{shareCode} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
     
     // SimilarTracks collection - public cache for similar songs
