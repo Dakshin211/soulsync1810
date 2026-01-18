@@ -381,8 +381,9 @@ export default function NowPlaying() {
       setTimeout(() => updateDuration(), 200);
       forceResumeAttemptsRef.current = 0;
       autoplayBlockedRef.current = false;
-      hasTriggeredNextRef.current = false;
-
+      // IMPORTANT: Only reset hasTriggeredNextRef when a NEW song starts playing
+      // Don't reset it here as it can cause multiple next triggers
+      
       // Schedule a best-effort "end" timeout (helps when onEnd event is delayed in background)
       try {
         if (endTimeoutRef.current) {
@@ -393,7 +394,7 @@ export default function NowPlaying() {
         const d = player.getDuration?.();
         const ct = player.getCurrentTime?.();
         if (typeof d === 'number' && typeof ct === 'number' && d > 0) {
-          const ms = Math.max(0, (d - ct) * 1000 + 650);
+          const ms = Math.max(0, (d - ct) * 1000 + 1000); // Added buffer to prevent premature triggers
           const songIdAtSchedule = currentSong?.id;
 
           endTimeoutRef.current = setTimeout(() => {
@@ -410,7 +411,7 @@ export default function NowPlaying() {
                 (typeof ctNow === 'number' &&
                   typeof dNow === 'number' &&
                   dNow > 0 &&
-                  ctNow >= dNow - 0.75)) &&
+                  ctNow >= dNow - 0.5)) &&
               !hasTriggeredNextRef.current
             ) {
               hasTriggeredNextRef.current = true;

@@ -44,6 +44,11 @@ interface MusicPlayerContextType {
   audioOnlyMode: boolean;
   setAudioOnlyMode: (enabled: boolean) => void;
   playQueueSong: (song: Song) => void;
+  
+  // Floating animation state
+  floatingQueueSong: Song | null;
+  showFloatingAnimation: boolean;
+  clearFloatingAnimation: () => void;
 
   playSong: (song: Song, source?: PlaybackSource) => void;
   playSongInRoom: (song: Song) => void;
@@ -106,6 +111,15 @@ export const MusicPlayerProvider: React.FC<{ children: React.ReactNode }> = ({
   const [recommendationError, setRecommendationError] = useState<string | null>(null);
   const [recommendationSource, setRecommendationSource] = useState<string | null>(null);
   const [playbackSource, setPlaybackSource] = useState<PlaybackSource>(null);
+  
+  // Floating queue animation state
+  const [floatingQueueSong, setFloatingQueueSong] = useState<Song | null>(null);
+  const [showFloatingAnimation, setShowFloatingAnimation] = useState(false);
+  
+  const clearFloatingAnimation = useCallback(() => {
+    setShowFloatingAnimation(false);
+    setFloatingQueueSong(null);
+  }, []);
   
   // Audio-only mode for background playback (desktop)
   const [audioOnlyMode, setAudioOnlyModeState] = useState<boolean>(() => {
@@ -404,9 +418,12 @@ export const MusicPlayerProvider: React.FC<{ children: React.ReactNode }> = ({
   const playSong = useCallback(
     (song: Song, source: PlaybackSource = null) => {
       if (inRoom && activeRoomId && activeUserId) {
+        // Trigger floating animation
+        setFloatingQueueSong(song);
+        setShowFloatingAnimation(true);
+        
         void roomQueueService
           .addSong(activeRoomId, activeUserId, song)
-          .then(() => toast.success('Added to room queue'))
           .catch((err) => {
             console.error('❌ [MusicPlayer] Failed to add to room queue:', err);
             toast.error('Could not add to room queue');
@@ -768,6 +785,9 @@ export const MusicPlayerProvider: React.FC<{ children: React.ReactNode }> = ({
         audioOnlyMode,
         setAudioOnlyMode,
         playQueueSong,
+        floatingQueueSong,
+        showFloatingAnimation,
+        clearFloatingAnimation,
         playSong,
         playSongInRoom,
         addToRoomQueue,
