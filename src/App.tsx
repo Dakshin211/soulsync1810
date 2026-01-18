@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { MusicPlayerProvider } from "./contexts/MusicPlayerContext";
+import { MusicPlayerProvider, useMusicPlayer } from "./contexts/MusicPlayerContext";
 import { Layout } from "./components/Layout";
 import Auth from "./pages/Auth";
 import Home from "./pages/Home";
@@ -20,6 +20,8 @@ import SharedPlaylistPage from "./pages/SharedPlaylistPage";
 import NowPlaying from "./components/NowPlaying";
 import FavoriteArtistsSelection from "./components/FavoriteArtistsSelection";
 import SplashScreen from "./components/SplashScreen";
+import FloatingQueueAnimation from "./components/FloatingQueueAnimation";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -91,25 +93,43 @@ const AppContent = () => {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <NowPlaying />
+      <FloatingQueueWrapper />
     </>
+  );
+};
+
+// Wrapper component to use the MusicPlayer context for floating animation
+const FloatingQueueWrapper = () => {
+  const { floatingQueueSong, showFloatingAnimation, clearFloatingAnimation } = useMusicPlayer();
+  
+  return (
+    <FloatingQueueAnimation
+      song={floatingQueueSong}
+      show={showFloatingAnimation}
+      onComplete={clearFloatingAnimation}
+    />
   );
 };
 
 const App = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <MusicPlayerProvider>
-              <AppContent />
-            </MusicPlayerProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthProvider>
+              <MusicPlayerProvider>
+                <ErrorBoundary>
+                  <AppContent />
+                </ErrorBoundary>
+              </MusicPlayerProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 };
 
