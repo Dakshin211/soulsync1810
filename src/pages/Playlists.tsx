@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ListMusic, Play, Music2 } from 'lucide-react';
+import { Plus, ListMusic, Play, Music2, Globe, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,6 +24,10 @@ interface Playlist {
   userId: string;
   songs: Song[];
   createdAt: string;
+  isShared?: boolean;
+  shareCode?: string;
+  isPublic?: boolean;
+  isSharedCopy?: boolean;
 }
 
 export default function Playlists() {
@@ -127,6 +131,20 @@ export default function Playlists() {
                     </div>
                   )}
                   
+                  {/* Shared/Public indicator badges */}
+                  <div className="absolute top-2 left-2 flex gap-1">
+                    {playlist.isSharedCopy && (
+                      <div className="w-7 h-7 rounded-full bg-primary/80 backdrop-blur-sm flex items-center justify-center" title="Saved from shared">
+                        <Link2 className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                    {playlist.isPublic && (
+                      <div className="w-7 h-7 rounded-full bg-secondary/80 backdrop-blur-sm flex items-center justify-center" title="Public playlist">
+                        <Globe className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </div>
+                  
                   {/* Hover overlay - Play only */}
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
                     <Button
@@ -141,7 +159,7 @@ export default function Playlists() {
                 
                 {/* Playlist info */}
                 <div className="p-3">
-                  <h3 className="font-bold text-sm mb-1 truncate group-hover:text-primary transition-colors">
+                  <h3 className="font-bold text-sm mb-1 truncate group-hover:text-primary transition-colors flex items-center gap-1.5">
                     {playlist.name}
                   </h3>
                   <p className="text-xs text-muted-foreground">
